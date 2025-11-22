@@ -35,10 +35,7 @@ class MyApp extends StatelessWidget {
       home: const ProductListScreen(),
 
       // === ROUTES WAJIB ADA ===
-      routes: {
-        "/review-list": (context) => const ReviewListScreen(),
-        "/add-review": (context) => const AddReviewScreen(),
-      },
+
     );
   }
 }

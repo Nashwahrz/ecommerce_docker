@@ -5,12 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import 'package:pruductservice/model/ModelProduct.dart';
+import 'package:pruductservice/screen/add_review_screen.dart';
 import 'package:pruductservice/screen/product_detail.dart';
 import 'package:pruductservice/providers/cart_provider.dart';
 import 'package:pruductservice/screen/cart_product.dart';
 import 'package:pruductservice/screen/review_list_screen.dart';
-// Asumsi: Tambahkan impor untuk UserListScreen
-import 'package:pruductservice/screen/user_list_screen.dart'; // <<< IMPOR BARU
+import 'package:pruductservice/screen/user_list_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -37,10 +37,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
         // Asumsi modelProductFromJson mengkonversi JSON ke List<ModelProduct>
         return modelProductFromJson(response.body);
       } else {
-        throw Exception('Gagal mengambil data produk. Status: ${response.statusCode}');
+        throw Exception('Gagal mengambil data produk.');
       }
     } catch (e) {
-      throw Exception('Terjadi kesalahan jaringan atau server: $e');
+      throw Exception('Terjadi kesalahan jaringan/server: $e');
     }
   }
 
@@ -54,25 +54,26 @@ class _ProductListScreenState extends State<ProductListScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         actions: [
-          // 1. Icon Daftar Pengguna (BARU DITAMBAHKAN)
+          // Icon Daftar Pengguna
           IconButton(
             icon: const Icon(Icons.people_outline, size: 26),
             tooltip: 'Lihat Daftar Pengguna',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => UserListScreen()), // Navigasi ke UserListScreen
+                MaterialPageRoute(builder: (context) => UserListScreen()),
               );
             },
           ),
 
-          // 2. Cart Icon dengan badge notifikasi
+          // Cart Icon dengan badge notifikasi
           Consumer<CartProvider>(
-            builder: (context, cartProvider, child) {
+            builder: (context, cartProvider, _) {
               return Stack(
                 children: [
                   IconButton(
                     icon: const Icon(Icons.shopping_cart, size: 26),
+                    tooltip: 'Lihat Keranjang',
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -102,7 +103,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           ),
                         ),
                       ),
-                    ),
+                    )
                 ],
               );
             },
@@ -111,22 +112,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ],
       ),
 
-      // ================= LIST PRODUK ==================
+      // ================== BODY ==================
       body: FutureBuilder<List<ModelProduct>>(
         future: _futureProducts,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Colors.indigo),
-                  SizedBox(height: 10),
-                  Text("Memuat produk...", style: TextStyle(color: Colors.indigo)),
-                ],
-              ),
-            );
-          } else if (snapshot.hasError) {
+            return const Center(child: CircularProgressIndicator(color: Colors.indigo));
+          }
+
+          if (snapshot.hasError) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -136,137 +130,146 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     const Icon(Icons.error_outline, color: Colors.red, size: 50),
                     const SizedBox(height: 10),
                     Text(
-                      'Gagal memuat: ${snapshot.error}. Pastikan server Anda berjalan.',
+                      "Error: ${snapshot.error}. Coba Muat Ulang.",
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        // Coba muat ulang data
-                        setState(() {
-                          _futureProducts = _fetchProducts();
-                        });
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text("Coba Lagi"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                      ),
                     ),
                   ],
                 ),
               ),
             );
-          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-            final products = snapshot.data!;
+          }
 
-            return ListView.builder(
-              padding: const EdgeInsets.only(top: 8.0, bottom: 80.0),
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ProductDetailScreen(product: product),
-                        ),
-                      );
-                    },
-                    child: Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: [
-                            // Icon Produk
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.indigo.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.shopping_bag_outlined, color: Colors.indigo, size: 30),
-                            ),
-                            const SizedBox(width: 15),
-                            // Nama dan Harga Produk
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    product.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.black87,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Harga: Rp ${product.price.toDouble().toStringAsFixed(0)}",
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Trailing
-                            const Icon(Icons.chevron_right, color: Colors.black54, size: 24),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          } else {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.inbox_outlined, color: Colors.black38, size: 60),
                   SizedBox(height: 10),
-                  Text(
-                    'Tidak ada produk yang tersedia saat ini.',
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
+                  Text('Tidak ada produk yang tersedia saat ini.'),
                 ],
               ),
             );
           }
+
+          final products = snapshot.data!;
+
+          return ListView.builder(
+            padding: const EdgeInsets.only(top: 12, left: 12, right: 12, bottom: 80), // Tambah padding bawah untuk FAB
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Icon Produk
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.shopping_bag_outlined,
+                            color: Colors.indigo, size: 30),
+                      ),
+
+                      const SizedBox(width: 15),
+
+                      // Nama Produk & Harga
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ProductDetailScreen(product: product),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Rp ${product.price.toDouble().toStringAsFixed(0)}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // =================== TOMBOL REVIEW PER PRODUK ===================
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddReviewScreen(productId: product.id),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          "Review",
+                          style: TextStyle(
+                              color: Colors.black, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
         },
       ),
 
-      // ==================== Floating Action Button untuk Review ======================
+      // ==================== TOMBOL LIHAT SEMUA REVIEW (FAB) ======================
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
+          // Navigasi ke ReviewListScreen
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => ReviewListScreen()),
           );
         },
-        icon: const Icon(Icons.rate_review_outlined),
-        label: const Text("Lihat Review"),
-        backgroundColor: Colors.amber,
-        foregroundColor: Colors.black87,
+        icon: const Icon(Icons.reviews_outlined),
+        label: const Text("Semua Review"),
+        backgroundColor: Colors.blueGrey, // Warna berbeda agar menonjol dari tombol review per produk
+        foregroundColor: Colors.white,
         elevation: 6,
       ),
+      // Atur lokasi FAB ke bawah kiri
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
     );
   }
