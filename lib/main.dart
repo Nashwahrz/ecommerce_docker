@@ -1,12 +1,10 @@
-// main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// Pastikan jalur impor ini benar
-
 import 'package:pruductservice/providers/cart_provider.dart';
 import 'package:pruductservice/screen/product_list_screen.dart';
+import 'package:pruductservice/screen/review_list_screen.dart';
+import 'package:pruductservice/screen/add_review_screen.dart';
 
 void main() {
   runApp(
@@ -26,13 +24,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Product App',
+      debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      // Set ProductListScreen sebagai halaman awal
+
+      // Halaman awal
       home: const ProductListScreen(),
-      debugShowCheckedModeBanner: false,
+
+      // === ROUTES WAJIB ADA ===
+      routes: {
+        "/review-list": (context) => const ReviewListScreen(),
+        "/add-review": (context) => const AddReviewScreen(),
+      },
     );
   }
 }
