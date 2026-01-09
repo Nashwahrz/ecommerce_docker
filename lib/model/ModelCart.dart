@@ -9,49 +9,69 @@ ModelCart modelCartFromJson(String str) => ModelCart.fromJson(json.decode(str));
 String modelCartToJson(ModelCart data) => json.encode(data.toJson());
 
 class ModelCart {
-  List<Item> items;
-  int total;
+  int totalCarts;
+  List<Datum> data;
 
   ModelCart({
-    required this.items,
-    required this.total,
+    required this.totalCarts,
+    required this.data,
   });
 
   factory ModelCart.fromJson(Map<String, dynamic> json) => ModelCart(
-    items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
-    total: json["total"],
+    totalCarts: json["total_carts"],
+    data: List<Datum>.from(json["data"].map((x) => Datum.fromJson(x))),
   );
 
   Map<String, dynamic> toJson() => {
+    "total_carts": totalCarts,
+    "data": List<dynamic>.from(data.map((x) => x.toJson())),
+  };
+}
+
+class Datum {
+  String userId;
+  List<Item> items;
+
+  Datum({
+    required this.userId,
+    required this.items,
+  });
+
+  factory Datum.fromJson(Map<String, dynamic> json) => Datum(
+    userId: json["user_id"],
+    items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "user_id": userId,
     "items": List<dynamic>.from(items.map((x) => x.toJson())),
-    "total": total,
   };
 }
 
 class Item {
-  int id;
-  String name;
-  int quantity;
+  int productId;
+  String productName;
   int price;
+  int quantity;
 
   Item({
-    required this.id,
-    required this.name,
-    required this.quantity,
+    required this.productId,
+    required this.productName,
     required this.price,
+    required this.quantity,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
-    id: json["id"],
-    name: json["name"],
-    quantity: json["quantity"],
+    productId: json["product_id"],
+    productName: json["product_name"],
     price: json["price"],
+    quantity: json["quantity"],
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
-    "name": name,
-    "quantity": quantity,
+    "product_id": productId,
+    "product_name": productName,
     "price": price,
+    "quantity": quantity,
   };
 }

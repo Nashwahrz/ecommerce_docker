@@ -1,47 +1,50 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:pruductservice/model/ModelReview.dart';
+import 'dart:convert';
+import '../model/ModelReview.dart';
 
 class ReviewService {
-  static const String baseUrl = "http://10.117.157.139:5002";
+  // Base URL sesuai Docker
+  static const String baseUrl = "http://10.57.107.139:5004/reviews";
 
-  // GET SEMUA review
-  static Future<List<ModelReview>> getReviews() async {
-    final response = await http.get(Uri.parse("$baseUrl/reviews"));
+  // 1. POST REVIEW (Sudah Benar, hanya pastikan URL-nya tetap /reviews)
+  Future<bool> postReview(int productId, int rating, String reviewText) async {
+    try {
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        body: {
+          "product_id": productId.toString(),
+          "rating": rating.toString(),
+          "review": reviewText,
+        },
+      );
 
-    if (response.statusCode == 200) {
-      return modelReviewFromJson(response.body);
-    } else {
-      throw Exception("Failed to load reviews");
+      return response.statusCode == 201; // Flask kirim 201 untuk 'Created'
+    } catch (e) {
+      print("❌ Error Post Review: $e");
+      return false;
     }
   }
 
-  // GET review berdasarkan product ID
-  static Future<List<ModelReview>> getReviewsByProductId(int productId) async {
-    final response = await http.get(
-      Uri.parse("$baseUrl/reviews?product_id=$productId"),
-    );
+  // 2. GET REVIEWS (Disesuaikan dengan Route Flask /reviews/product/<id>)
+  Future<List<Data>> getProductReviews(int productId) async {
+    try {
+      // PERBAIKAN URL: tambahkan /product/ sesuai route Flask
+      final String fullUrl = "$baseUrl/product/$productId";
+      final response = await http.get(Uri.parse(fullUrl));
 
-    if (response.statusCode == 200) {
-      return modelReviewFromJson(response.body);
-    } else {
-      throw Exception("Gagal mengambil review untuk produk ID: $productId");
+      print("Log URL: $fullUrl");
+      print("Log Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        // PERBAIKAN PARSING: Flask mengembalikan List langsung []
+        final List<dynamic> jsonList = jsonDecode(response.body);
+
+        return jsonList.map((item) => Data.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      print("❌ Error Fetch Reviews: $e");
+      return [];
     }
-  }
-
-  // POST tambah review
-  static Future<bool> addReview(int productId, String review, int rating) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/reviews"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "product_id": productId,
-        "review": review,
-        "rating": rating,
-      }),
-    );
-
-    // API kamu menggunakan response code 201 (Created)
-    return response.statusCode == 201;
   }
 }

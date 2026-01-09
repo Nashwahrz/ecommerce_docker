@@ -1,16 +1,11 @@
-// lib/screens/product_list_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-
-import 'package:pruductservice/model/ModelProduct.dart';
-import 'package:pruductservice/screen/add_review_screen.dart';
-import 'package:pruductservice/screen/product_detail.dart';
-import 'package:pruductservice/providers/cart_provider.dart';
-import 'package:pruductservice/screen/cart_product.dart';
-import 'package:pruductservice/screen/review_list_screen.dart';
-import 'package:pruductservice/screen/user_list_screen.dart';
+import 'package:pruductservice/screen/add_product_screen.dart';
+import 'package:pruductservice/screen/edit_product_screen.dart';
+import 'package:pruductservice/screen/cart_screen.dart';
+import 'package:pruductservice/screen/detail_product_screen.dart';
+import 'package:pruductservice/services/product_service.dart';
+import 'package:pruductservice/services/cart_service.dart';
+import '../model/ModelProduct.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -20,230 +15,153 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  final String apiUrl = "http://10.117.157.139:3000/products";
-  late Future<List<ModelProduct>> _futureProducts;
+  final ProductService _service = ProductService();
+  final CartService _cartService = CartService();
+  late Future<ModelProduct> _futureProducts;
 
   @override
   void initState() {
     super.initState();
-    _futureProducts = _fetchProducts();
+    _futureProducts = _service.getProducts();
   }
 
-  Future<List<ModelProduct>> _fetchProducts() async {
-    try {
-      final response = await http.get(Uri.parse(apiUrl));
+  void _refresh() {
+    setState(() {
+      _futureProducts = _service.getProducts();
+    });
+  }
 
-      if (response.statusCode == 200) {
-        // Asumsi modelProductFromJson mengkonversi JSON ke List<ModelProduct>
-        return modelProductFromJson(response.body);
-      } else {
-        throw Exception('Gagal mengambil data produk.');
-      }
-    } catch (e) {
-      throw Exception('Terjadi kesalahan jaringan/server: $e');
+  void _addToCart(Datum product) async {
+    bool success = await _cartService.addToCart(
+        product.id, product.name, product.price, 1);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Congrat! ${product.name} masuk keranjang!"),
+          backgroundColor: Colors.black,
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: "LIHAT",
+            textColor: Colors.yellow,
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const CartScreen()));
+            },
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Oh no! Gagal menambah keranjang"),
+            backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _deleteProduct(int id) async {
+    bool success = await _service.deleteProduct(id);
+    if (success) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Produk dihapus")));
+      _refresh();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('🛍️ Toko Online Sederhana'),
+        title: const Text("Mickey's Shop",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.black,
         centerTitle: true,
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        elevation: 4,
         actions: [
-          // Icon Daftar Pengguna
           IconButton(
-            icon: const Icon(Icons.people_outline, size: 26),
-            tooltip: 'Lihat Daftar Pengguna',
+            icon: const Icon(Icons.shopping_cart, color: Colors.yellow),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => UserListScreen()),
-              );
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const CartScreen()));
             },
           ),
-
-          // Cart Icon dengan badge notifikasi
-          Consumer<CartProvider>(
-            builder: (context, cartProvider, _) {
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart, size: 26),
-                    tooltip: 'Lihat Keranjang',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => CartScreen()),
-                      );
-                    },
-                  ),
-                  if (cartProvider.totalItems > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white, width: 1.5),
-                        ),
-                        child: Text(
-                          cartProvider.totalItems.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    )
-                ],
-              );
-            },
-          ),
-          const SizedBox(width: 8),
         ],
       ),
-
-      // ================== BODY ==================
-      body: FutureBuilder<List<ModelProduct>>(
+      body: FutureBuilder<ModelProduct>(
         future: _futureProducts,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.indigo));
+            return const Center(child: CircularProgressIndicator(color: Colors.red));
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          } else if (!snapshot.hasData || snapshot.data!.data.isEmpty) {
+            return const Center(child: Text("Produk kosong, See Ya Real Soon!"));
           }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 50),
-                    const SizedBox(height: 10),
-                    Text(
-                      "Error: ${snapshot.error}. Coba Muat Ulang.",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.inbox_outlined, color: Colors.black38, size: 60),
-                  SizedBox(height: 10),
-                  Text('Tidak ada produk yang tersedia saat ini.'),
-                ],
-              ),
-            );
-          }
-
-          final products = snapshot.data!;
 
           return ListView.builder(
-            padding: const EdgeInsets.only(top: 12, left: 12, right: 12, bottom: 80), // Tambah padding bawah untuk FAB
-            itemCount: products.length,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            itemCount: snapshot.data!.data.length,
             itemBuilder: (context, index) {
-              final product = products[index];
-
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+              final product = snapshot.data!.data[index];
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.red, width: 2), // Aksen Merah
+                  boxShadow: [
+                    BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 5)
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(10),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailProductScreen(product: product),
+                      ),
+                    );
+                  },
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.yellow, // Sepatu Mickey
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.mouse, color: Colors.black),
+                  ),
+                  title: Text(product.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  subtitle: Text(
+                    "Rp ${product.price}\n${product.description}",
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Icon Produk
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.shopping_bag_outlined,
-                            color: Colors.indigo, size: 30),
+                      IconButton(
+                        icon: const Icon(Icons.add_shopping_cart, color: Colors.green),
+                        onPressed: () => _addToCart(product),
                       ),
-
-                      const SizedBox(width: 15),
-
-                      // Nama Produk & Harga
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    ProductDetailScreen(product: product),
-                              ),
-                            );
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Rp ${product.price.toDouble().toStringAsFixed(0)}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // =================== TOMBOL REVIEW PER PRODUK ===================
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () async {
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  AddReviewScreen(productId: product.id),
-                            ),
+                                builder: (context) =>
+                                    EditProductScreen(product: product)),
                           );
+                          if (result == true) _refresh();
                         },
-                        child: const Text(
-                          "Review",
-                          style: TextStyle(
-                              color: Colors.black, fontWeight: FontWeight.bold),
-                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _showDeleteDialog(product.id),
                       ),
                     ],
                   ),
@@ -253,24 +171,42 @@ class _ProductListScreenState extends State<ProductListScreen> {
           );
         },
       ),
-
-      // ==================== TOMBOL LIHAT SEMUA REVIEW (FAB) ======================
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Navigasi ke ReviewListScreen
-          Navigator.push(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.red, // Celana Mickey
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => ReviewListScreen()),
+            MaterialPageRoute(builder: (context) => const AddProductScreen()),
           );
+          if (result == true) _refresh();
         },
-        icon: const Icon(Icons.reviews_outlined),
-        label: const Text("Semua Review"),
-        backgroundColor: Colors.blueGrey, // Warna berbeda agar menonjol dari tombol review per produk
-        foregroundColor: Colors.white,
-        elevation: 6,
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
-      // Atur lokasi FAB ke bawah kiri
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+    );
+  }
+
+  void _showDeleteDialog(int id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Hapus Produk?"),
+        content: const Text("Gosh! Data ini akan hilang selamanya."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal", style: TextStyle(color: Colors.black))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteProduct(id);
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, shape: const StadiumBorder()),
+            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }

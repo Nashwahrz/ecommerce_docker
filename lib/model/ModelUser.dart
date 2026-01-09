@@ -1,37 +1,36 @@
-// To parse this JSON data, do
-//
-//     final modelUser = modelUserFromJson(jsonString);
-
 import 'dart:convert';
 
-List<ModelUser> modelUserFromJson(String str) => List<ModelUser>.from(json.decode(str).map((x) => ModelUser.fromJson(x)));
+// Fungsi helper tetap sama
+List<ModelUser> modelUserFromJson(String str) =>
+    List<ModelUser>.from(json.decode(str).map((x) => ModelUser.fromJson(x)));
 
-String modelUserToJson(List<ModelUser> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+String modelUserToJson(List<ModelUser> data) =>
+    json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
 class ModelUser {
-  int id;
+  int? id;         // Diubah menjadi opsional (?) karena saat POST id belum ada
   String name;
   String email;
-  String role;
+  String? password; // Tambahkan password untuk kebutuhan POST/Register
 
   ModelUser({
-    required this.id,
+    this.id,
     required this.name,
     required this.email,
-    required this.role,
+    this.password, // Masukkan ke constructor
   });
 
   factory ModelUser.fromJson(Map<String, dynamic> json) => ModelUser(
     id: json["id"],
     name: json["name"],
     email: json["email"],
-    role: json["role"],
+    // Password tidak perlu diambil dari JSON saat GET (karena memang di-hide di backend)
   );
 
   Map<String, dynamic> toJson() => {
     "id": id,
     "name": name,
     "email": email,
-    "role": role,
+    if (password != null) "password": password, // Hanya kirim password jika diisi
   };
 }

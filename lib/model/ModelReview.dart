@@ -4,32 +4,48 @@
 
 import 'dart:convert';
 
-List<ModelReview> modelReviewFromJson(String str) => List<ModelReview>.from(json.decode(str).map((x) => ModelReview.fromJson(x)));
+ModelReview modelReviewFromJson(String str) => ModelReview.fromJson(json.decode(str));
 
-String modelReviewToJson(List<ModelReview> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+String modelReviewToJson(ModelReview data) => json.encode(data.toJson());
 
 class ModelReview {
-  int id;
+  Data data;
+  String message;
+
+  ModelReview({
+    required this.data,
+    required this.message,
+  });
+
+  factory ModelReview.fromJson(Map<String, dynamic> json) => ModelReview(
+    data: Data.fromJson(json["data"]),
+    message: json["message"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "data": data.toJson(),
+    "message": message,
+  };
+}
+
+class Data {
   int productId;
   int rating;
   String review;
 
-  ModelReview({
-    required this.id,
+  Data({
     required this.productId,
     required this.rating,
     required this.review,
   });
 
-  factory ModelReview.fromJson(Map<String, dynamic> json) => ModelReview(
-    id: json["id"],
+  factory Data.fromJson(Map<String, dynamic> json) => Data(
     productId: json["product_id"],
     rating: json["rating"],
     review: json["review"],
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
     "product_id": productId,
     "rating": rating,
     "review": review,

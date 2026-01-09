@@ -1,46 +1,90 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
-// Pastikan nama file dan path impor sudah benar
-import '../model/ModelProduct.dart';
-
-import 'package:flutter/foundation.dart';
-import 'dart:io';
+import 'dart:convert';
+import '../model/ModelProduct.dart'; // Pastikan path benar
 
 class ProductService {
-  // Untuk Android Emulator gunakan 10.0.2.2
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  // Gunakan IP yang sesuai dengan koneksi Wi-Fi Anda
+  static const String baseUrl = "http://10.57.107.139:3000/products";
 
-  // Ubah 'Product' menjadi 'ModelProduct'
-  Future<List<ModelProduct>> getProducts() async {
+  // 1. AMBIL SEMUA PRODUK
+  Future<ModelProduct> getProducts() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/products'));
+      final response = await http.get(Uri.parse(baseUrl));
 
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
-        // Ubah 'Product.fromJson' menjadi 'ModelProduct.fromJson'
-        return data.map((json) => ModelProduct.fromJson(json)).toList();
+        // Karena API Anda mengembalikan { success: true, data: [...] }
+        // modelProductFromJson akan bekerja karena model Anda sudah memiliki field 'data'
+        return modelProductFromJson(response.body);
       } else {
-        throw Exception('Failed to load products: ${response.statusCode}');
+        throw Exception("Gagal memuat produk: ${response.statusCode}");
       }
     } catch (e) {
-      throw Exception('Failed to connect to server: $e');
+      throw Exception("Terjadi kesalahan koneksi: $e");
     }
   }
 
-  // Ubah 'Product' menjadi 'ModelProduct'
-  Future<ModelProduct> getProductById(int id) async {
+  // 2. TAMBAH PRODUK
+  Future<bool> addProduct(String name, int price, String description) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/products/$id'));
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": name,
+          "price": price, // Sequelize DataTypes.FLOAT menerima angka
+          "description": description,
+        }),
+      );
+
+      // API Sequelize Anda mengembalikan status 200 melalui helper success()
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      print("Add Product Error: $e");
+      return false;
+    }
+  }
+
+  // 3. UPDATE PRODUK
+  Future<bool> updateProduct(int id, String name, int price, String description) async {
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/$id"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": name,
+          "price": price,
+          "description": description,
+        }),
+      );
 
       if (response.statusCode == 200) {
-        Map<String, dynamic> data = json.decode(response.body);
-        // Ubah 'Product.fromJson' menjadi 'ModelProduct.fromJson'
-        return ModelProduct.fromJson(data);
-      } else {
-        throw Exception('Failed to load product: ${response.statusCode}');
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
       }
+      return false;
     } catch (e) {
-      throw Exception('Failed to connect to server: $e');
+      print("Update Product Error: $e");
+      return false;
+    }
+  }
+
+  // 4. HAPUS PRODUK
+  Future<bool> deleteProduct(int id) async {
+    try {
+      final response = await http.delete(Uri.parse("$baseUrl/$id"));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      print("Delete Product Error: $e");
+      return false;
     }
   }
 }
